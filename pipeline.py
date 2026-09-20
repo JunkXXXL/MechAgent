@@ -34,7 +34,7 @@ agent_builder = StateGraph(GraphState)
 
 agent_builder.add_node("input_classifier", input_classifier)
 agent_builder.add_node("code_generation", code_generation)
-agent_builder.add_node("code_excecution_import_check", code_excecution_import_check)
+agent_builder.add_node("code_execution_import_check", code_execution_import_check)
 agent_builder.add_node("create_insight", create_insight)
 #agent_builder.add_node("decide_to_finish", decide_to_finish)
 
@@ -42,8 +42,8 @@ agent_builder.add_node("create_insight", create_insight)
 
 agent_builder.add_edge(START, "input_classifier")
 agent_builder.add_edge("input_classifier", "code_generation")
-agent_builder.add_edge("code_generation", "code_excecution_import_check")
-agent_builder.add_conditional_edges("code_excecution_import_check", decide_to_finish,
+agent_builder.add_edge("code_generation", "code_execution_import_check")
+agent_builder.add_conditional_edges("code_execution_import_check", decide_to_finish,
                        {"make insight":"create_insight",
                         "regenerate":"code_generation"})
 agent_builder.add_edge("create_insight", END)

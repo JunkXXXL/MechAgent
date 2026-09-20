@@ -83,7 +83,13 @@ code_builder:
     Gaussian methods → use numpy.linalg
     Ensure numerical stability and correctness.
     Define Simulation Pipeline
-    Initialize variables and constants
+    Expose every significant model parameter as a runtime input. The generated program
+    must accept all 8 significant parameters identified in the simulation specification
+    when it is launched (for example, as named command-line arguments via argparse),
+    pass them into the simulation entry point, and use those received values throughout
+    the mathematical model. Do not hard-code, omit, or silently replace any of the 8
+    significant parameters with defaults.
+    Initialize variables and constants from the received parameters
     Define time grid using:
     dt
     total time T

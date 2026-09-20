@@ -46,11 +46,10 @@ def decide_to_finish(state: dict)-> Literal["regenerate", "make insight"]:
     else:
         return "make insight"
 
-def code_excecution_import_check(state: dict):
+def code_execution_import_check(state: dict):
     code_solution = state["generation"]
 
     code = state["generation"].imports + "\n" + state["generation"].code
-    print("CODEEEE \n", code)
 
     #check import
     stdout = io.StringIO()

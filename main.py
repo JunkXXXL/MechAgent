@@ -18,11 +18,12 @@ from pipeline import agent
 
 PROJECT_DIR = Path(__file__).resolve().parent
 DEFAULT_RESULTS_DIR = PROJECT_DIR / "results"
+RUNS_PER_PROMPT = 1
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Запускает по одному эксперименту для каждого промпта из YAML."
+        description="Запускает по 10 экспериментов для каждого промпта из YAML."
     )
     parser.add_argument(
         "prompts_file", type=Path, help="Путь к YAML-файлу с промптами."
@@ -75,16 +76,6 @@ def safe_filename(name: str) -> str:
     return filename or "experiment"
 
 
-def unique_report_path(folder: Path, prompt_name: str) -> Path:
-    base_name = safe_filename(prompt_name)
-    candidate = folder / f"{base_name}.md"
-    suffix = 2
-    while candidate.exists():
-        candidate = folder / f"{base_name}_{suffix}.md"
-        suffix += 1
-    return candidate
-
-
 def render_value(value: Any) -> str:
     if value is None:
         return ""
@@ -97,6 +88,26 @@ def message_content(message: Any) -> str:
     if isinstance(message, BaseMessage):
         return render_value(message.content)
     return render_value(message)
+
+
+def extract_generated_code(result: dict[str, Any] | None) -> str:
+    """Получить запускаемый Python-код из structured output агента."""
+    if not result:
+        return "# Код не был получен: эксперимент завершился до генерации.\n"
+
+    generation = result.get("generation")
+    if generation is None:
+        return "# Код не был получен: в результате отсутствует generation.\n"
+
+    if isinstance(generation, dict):
+        imports = generation.get("imports", "")
+        body = generation.get("code", "")
+    else:
+        imports = getattr(generation, "imports", "")
+        body = getattr(generation, "code", "")
+
+    parts = [str(part).strip() for part in (imports, body) if str(part).strip()]
+    return "\n\n".join(parts) + "\n" if parts else "# Агент вернул пустой код.\n"
 
 
 def build_report(
@@ -188,38 +199,56 @@ def main() -> int:
     print(f"Папка результатов: {result_folder}")
 
     failed = 0
-    for index, (name, prompt) in enumerate(prompts, start=1):
-        print(f"\n[{index}/{len(prompts)}] Запуск эксперимента: {name}")
-        started_at = datetime.now().astimezone()
-        result: dict[str, Any] | None = None
-        error: str | None = None
+    total_runs = len(prompts) * RUNS_PER_PROMPT
+    completed_runs = 0
+    for prompt_index, (name, prompt) in enumerate(prompts, start=1):
+        safe_name = safe_filename(name)
+        prompt_folder = result_folder / safe_name
 
-        try:
-            result = run_experiment(prompt)
-            print("Эксперимент завершён успешно.")
-            print("Логи исполнения:")
-            print(render_value(result.get("sim_logs")) or "<логи отсутствуют>")
-            messages = result.get("messages", [])
-            print("Результат работы агента:")
+        for run_number in range(1, RUNS_PER_PROMPT + 1):
+            completed_runs += 1
             print(
-                message_content(messages[-1])
-                if messages
-                else "<результат отсутствует>"
+                f"\n[{completed_runs}/{total_runs}] Промпт "
+                f"{prompt_index}/{len(prompts)}: {name}; повтор {run_number}/10"
             )
-        except Exception:
-            failed += 1
-            error = traceback.format_exc()
-            print("Эксперимент завершился с ошибкой.")
-            print(error)
+            started_at = datetime.now().astimezone()
+            result: dict[str, Any] | None = None
+            error: str | None = None
 
-        finished_at = datetime.now().astimezone()
-        report_path = unique_report_path(result_folder, name)
-        report = build_report(name, prompt, started_at, finished_at, result, error)
-        report_path.write_text(report, encoding="utf-8")
-        print(f"Отчёт сохранён: {report_path}")
+            try:
+                result = run_experiment(prompt)
+                print("Эксперимент завершён успешно.")
+                print("Логи исполнения:")
+                print(render_value(result.get("sim_logs")) or "<логи отсутствуют>")
+                messages = result.get("messages", [])
+                print("Результат работы агента:")
+                print(
+                    message_content(messages[-1])
+                    if messages
+                    else "<результат отсутствует>"
+                )
+            except Exception:
+                failed += 1
+                error = traceback.format_exc()
+                print("Эксперимент завершился с ошибкой.")
+                print(error)
+
+            finished_at = datetime.now().astimezone()
+            run_folder = prompt_folder / str(run_number)
+            run_folder.mkdir(parents=True, exist_ok=True)
+            report_path = run_folder / f"{safe_name}.md"
+            code_path = run_folder / f"{safe_name}.py"
+
+            report = build_report(
+                name, prompt, started_at, finished_at, result, error
+            )
+            report_path.write_text(report, encoding="utf-8")
+            code_path.write_text(extract_generated_code(result), encoding="utf-8")
+            print(f"Отчёт сохранён: {report_path}")
+            print(f"Код сохранён: {code_path}")
 
     print(
-        f"\nЭксперименты завершены: {len(prompts) - failed} успешно, "
+        f"\nЭксперименты завершены: {total_runs - failed} успешно, "
         f"{failed} с ошибкой."
     )
     return 1 if failed else 0
