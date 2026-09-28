@@ -171,8 +171,6 @@ def create_insight(state: dict):
     print("CREATE Insight")
     generation = state["generation"]
     sim_logs = state["sim_logs"]
-    print("GENERATION AAA " + str(generation))
-    print("LOGS AAA " + sim_logs)
 
     insight_request = HumanMessage(
         prompts_tasks["create_insight"]["description"].format(
