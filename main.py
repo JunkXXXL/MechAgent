@@ -23,7 +23,7 @@ RUNS_PER_PROMPT = 10
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Запускает по 10 экспериментов для каждого промпта из YAML."
+        description=f"Запускает по {RUNS_PER_PROMPT} экспериментов для каждого промпта из YAML."
     )
     parser.add_argument(
         "prompts_file", type=Path, help="Путь к YAML-файлу с промптами."
@@ -209,7 +209,7 @@ def main() -> int:
             completed_runs += 1
             print(
                 f"\n[{completed_runs}/{total_runs}] Промпт "
-                f"{prompt_index}/{len(prompts)}: {name}; повтор {run_number}/10"
+                f"{prompt_index}/{len(prompts)}: {name}; повтор {run_number}/{RUNS_PER_PROMPT}"
             )
             started_at = datetime.now().astimezone()
             result: dict[str, Any] | None = None

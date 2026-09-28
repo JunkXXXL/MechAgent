@@ -25,19 +25,19 @@ class code(BaseModel):
     code: str = Field(description="Code block not including import statements")
 
 
-agent_input_classifier = ChatOpenAI(model="gpt-5-nano", temperature=0)
+agent_input_classifier = ChatOpenAI(model="gpt-5.5-2026-04-23")
 input_classifier_prompt = SystemMessage(prompts_agents["input_classifier"]["goal"] +
                                         prompts_agents["input_classifier"]["backstory"])
 
-agent_code_builder = ChatOpenAI(model="gpt-5-nano", temperature=0).with_structured_output(code)
+agent_code_builder = ChatOpenAI(model="gpt-5.5-2026-04-23").with_structured_output(code)
 agent_code_prompt = SystemMessage(prompts_agents["code_builder"]["goal"] +
                                   prompts_agents["code_builder"]["backstory"])
 
-agent_error_diagnoser = ChatOpenAI(model="gpt-5-nano", temperature=0)
+agent_error_diagnoser = ChatOpenAI(model="gpt-5.5-2026-04-23")
 agent_error_prompt = SystemMessage(prompts_agents["Error_diagnosis"]["goal"] +
                                    prompts_agents["Error_diagnosis"]["backstory"])
 
-agent_insighter = ChatOpenAI(model="gpt-5-nano", temperature=0.3)
+agent_insighter = ChatOpenAI(model="gpt-5-nano")
 insighter_prompt = SystemMessage(prompts_agents["MechanicalInsight"]["goal"] +
                                  prompts_agents["MechanicalInsight"]["backstory"])
 
