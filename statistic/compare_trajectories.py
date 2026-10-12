@@ -134,7 +134,10 @@ def read_trajectory(path: Path) -> Trajectory:
         None,
     )
     columns = {normalized_name(name): name for name in data.dtype.names}
-    coordinate_names = [columns.get(name) for name in TRAJECTORY_COLUMNS]
+    coordinate_names = [
+        columns.get(name) or columns.get(name + "m")
+        for name in TRAJECTORY_COLUMNS
+    ]
     if time_name is None or any(name is None for name in coordinate_names):
         available = ", ".join(data.dtype.names)
         raise ValueError(
@@ -199,7 +202,7 @@ def compare_trajectory(candidate: Trajectory, reference: Trajectory) -> dict[str
 def safe_run_directory(output_dir: Path, relative_script: Path) -> Path:
     # There is one generated script per source directory, but including the stem
     # keeps this correct if that layout changes later.
-    return output_dir / "runs" / relative_script.parent / relative_script.stem
+    return output_dir / "runs" / relative_script.parent
 
 
 def find_trajectory_csv(run_dir: Path) -> tuple[Path, Trajectory]:
@@ -248,12 +251,15 @@ def run_one(
     stdout_path = run_dir / "stdout.log"
     stderr_path = run_dir / "stderr.log"
     started = time.perf_counter()
+
+    model_args = []
+
     try:
         with stdout_path.open("w", encoding="utf-8", errors="replace") as stdout_file, stderr_path.open(
             "w", encoding="utf-8", errors="replace"
         ) as stderr_file:
             completed = subprocess.run(
-                [sys.executable, copied_script.name],
+                [sys.executable, copied_script.name, *model_args],
                 cwd=run_dir,
                 env=environment,
                 stdin=subprocess.DEVNULL,

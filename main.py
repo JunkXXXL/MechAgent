@@ -18,7 +18,7 @@ from pipeline import agent
 
 PROJECT_DIR = Path(__file__).resolve().parent
 DEFAULT_RESULTS_DIR = PROJECT_DIR / "results"
-RUNS_PER_PROMPT = 10
+RUNS_PER_PROMPT = 1
 
 
 def parse_args() -> argparse.Namespace:

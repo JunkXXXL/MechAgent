@@ -139,8 +139,8 @@ def read_editable_table(table: Path) -> tuple[list[str], list[str], list[list[fl
     if not table.is_file():
         raise FileNotFoundError(f"Editable heatmap table does not exist: {table}")
 
-    with table.open("r", encoding="CP1251") as stream:
-        reader = csv.DictReader(stream, delimiter=";")
+    with table.open("r", encoding="utf-8-sig") as stream: # utf-8-sig CP1251
+        reader = csv.DictReader(stream, delimiter=",")
         if not reader.fieldnames or len(reader.fieldnames) < 2:
             raise ValueError("The editable table needs a label column and experiment columns")
         label_column = reader.fieldnames[0]
