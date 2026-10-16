@@ -10,6 +10,7 @@ import sys
 import tempfile
 import yaml
 from dotenv import load_dotenv
+from langgraph.config import get_stream_writer
 
 load_dotenv()
 
@@ -98,12 +99,15 @@ def _build_failure_result(code_solution: code, source: str, error: str):
 
 
 def code_execution_import_check(state: dict):
+    writer = get_stream_writer()
     code_solution = state["generation"]
     imports = code_solution.imports
     source = f"{imports}\n{code_solution.code}"
 
     try:
         import_result = _run_python_code(imports, "Import check")
+        writer({"stage": "import_check", "returncode": import_result.returncode,
+                "stdout": import_result.stdout, "stderr": import_result.stderr})
         if import_result.returncode != 0:
             error = (
                 f"Import check failed with exit code {import_result.returncode}.\n"
@@ -113,6 +117,8 @@ def code_execution_import_check(state: dict):
             return _build_failure_result(code_solution, source, error)
 
         execution_result = _run_python_code(source, "Execution check")
+        writer({"stage": "execution_check", "returncode": execution_result.returncode,
+                "stdout": execution_result.stdout, "stderr": execution_result.stderr})
         if execution_result.returncode != 0:
             error = (
                 f"Execution failed with exit code {execution_result.returncode}.\n"
@@ -121,6 +127,7 @@ def code_execution_import_check(state: dict):
             print("---CODE EXECUTION CHECK: FAILED---")
             return _build_failure_result(code_solution, source, error)
     except (OSError, RuntimeError) as exc:
+        writer({"stage": "code_check_error", "error": str(exc)})
         print("---CODE EXECUTION CHECK: FAILED---")
         return _build_failure_result(code_solution, source, str(exc))
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import traceback
 from datetime import datetime
@@ -14,6 +15,7 @@ from langchain.messages import HumanMessage
 from langchain_core.messages import BaseMessage
 
 from pipeline import agent
+from run_trace import RunTrace, jsonable
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -171,16 +173,28 @@ def build_report(
     return "\n".join(lines)
 
 
-def run_experiment(prompt: str) -> dict[str, Any]:
-    return agent.invoke(
-        {
-            "messages": [HumanMessage(prompt)],
-            "error": "no",
-            "generation": "",
-            "agent_code_history": [],
-            "agent_error_history": [],
-        }
-    )
+def run_experiment(prompt: str, trace: RunTrace) -> dict[str, Any]:
+    initial_state = {
+        "messages": [HumanMessage(prompt)],
+        "error": "no",
+        "generation": "",
+        "agent_code_history": [],
+        "agent_error_history": [],
+    }
+    trace.add("initial_state", state=initial_state)
+    result = None
+    for mode, data in agent.stream(
+        initial_state, config={"callbacks": [trace]},
+        stream_mode=["updates", "values", "custom"],
+    ):
+        if mode == "updates":
+            for node, update in data.items():
+                trace.add("node_update", node=node, update=update)
+        elif mode == "custom":
+            trace.add("code_check", **data)
+        else:
+            result = data
+    return result
 
 
 def main() -> int:
@@ -212,11 +226,12 @@ def main() -> int:
                 f"{prompt_index}/{len(prompts)}: {name}; повтор {run_number}/{RUNS_PER_PROMPT}"
             )
             started_at = datetime.now().astimezone()
+            trace = RunTrace()
             result: dict[str, Any] | None = None
             error: str | None = None
 
             try:
-                result = run_experiment(prompt)
+                result = run_experiment(prompt, trace)
                 print("Эксперимент завершён успешно.")
                 print("Логи исполнения:")
                 print(render_value(result.get("sim_logs")) or "<логи отсутствуют>")
@@ -238,14 +253,29 @@ def main() -> int:
             run_folder.mkdir(parents=True, exist_ok=True)
             report_path = run_folder / f"{safe_name}.md"
             code_path = run_folder / f"{safe_name}.py"
+            trace_path = run_folder / "trace.json"
 
             report = build_report(
                 name, prompt, started_at, finished_at, result, error
             )
             report_path.write_text(report, encoding="utf-8")
             code_path.write_text(extract_generated_code(result), encoding="utf-8")
+            trace_path.write_text(
+                json.dumps(jsonable({
+                    "prompt_name": name,
+                    "prompt": prompt,
+                    "started_at": started_at.isoformat(),
+                    "finished_at": finished_at.isoformat(),
+                    "status": "error" if error else "success",
+                    "events": trace.events,
+                    "final_state": result,
+                    "error": error,
+                }), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             print(f"Отчёт сохранён: {report_path}")
             print(f"Код сохранён: {code_path}")
+            print(f"Trace saved: {trace_path}")
 
     print(
         f"\nЭксперименты завершены: {total_runs - failed} успешно, "
