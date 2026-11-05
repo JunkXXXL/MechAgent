@@ -31,6 +31,10 @@ def parse_args() -> argparse.Namespace:
         "prompts_file", type=Path, help="Путь к YAML-файлу с промптами."
     )
     parser.add_argument(
+        "--skip-insight", action="store_true",
+        help="Пропустить последнего агента с описанием модели и инструкцией запуска.",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_RESULTS_DIR,
@@ -173,14 +177,21 @@ def build_report(
     return "\n".join(lines)
 
 
-def run_experiment(prompt: str, trace: RunTrace) -> dict[str, Any]:
+def run_experiment(
+    prompt: str, trace: RunTrace, *, artifact_dir: Path | None = None,
+    enable_insight: bool = True,
+) -> dict[str, Any]:
     initial_state = {
         "messages": [HumanMessage(prompt)],
         "error": "no",
         "generation": "",
         "agent_code_history": [],
         "agent_error_history": [],
+        "enable_insight": enable_insight,
+        "max_iterations": 3,
     }
+    if artifact_dir is not None:
+        initial_state["artifact_dir"] = str(artifact_dir)
     trace.add("initial_state", state=initial_state)
     result = None
     for mode, data in agent.stream(
@@ -226,12 +237,17 @@ def main() -> int:
                 f"{prompt_index}/{len(prompts)}: {name}; повтор {run_number}/{RUNS_PER_PROMPT}"
             )
             started_at = datetime.now().astimezone()
+            run_folder = prompt_folder / str(run_number)
+            run_folder.mkdir(parents=True, exist_ok=True)
             trace = RunTrace()
             result: dict[str, Any] | None = None
             error: str | None = None
 
             try:
-                result = run_experiment(prompt, trace)
+                result = run_experiment(
+                    prompt, trace, artifact_dir=run_folder,
+                    enable_insight=not args.skip_insight,
+                )
                 print("Эксперимент завершён успешно.")
                 print("Логи исполнения:")
                 print(render_value(result.get("sim_logs")) or "<логи отсутствуют>")
