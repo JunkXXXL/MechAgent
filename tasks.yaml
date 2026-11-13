@@ -15,8 +15,6 @@ subsystem_design:
 
 code_building:
   description: |
-    Исходный запрос пользователя:
-    {request}
 
     Спецификация:
     {specification}

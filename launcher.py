@@ -119,7 +119,7 @@ def compare_trajectories(generated: dict, reference: dict) -> dict[str, float]:
     return metrics
 
 
-def launch(prompt: str, folder: Path, *, enable_insight: bool = True) -> dict:
+def launch(prompt: str, folder: Path, *, enable_insight: bool = False) -> dict:
     """Persist the complete run, including a trace if any stage fails."""
     # Lazy import allows --help and numerical tests without initializing LLM clients.
     from main import extract_generated_code, run_experiment
@@ -187,7 +187,8 @@ def main() -> int:
     source.add_argument("--prompt-file", type=Path, help="UTF-8 текстовый файл с одним запросом")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_DIR / "results" / "launcher",
                         help="Корневая папка; каждый запуск создаёт уникальный подкаталог")
-    parser.add_argument("--skip-insight", action="store_true")
+    parser.add_argument("--skip-insight", dest="enable_insight", action="store_false", default=False,
+                        help="Пропустить Create Insight (по умолчанию)")
     args = parser.parse_args()
     try:
         prompt = args.prompt_file.read_text(encoding="utf-8-sig") if args.prompt_file else args.prompt
@@ -195,7 +196,7 @@ def main() -> int:
             parser.error("Запрос должен быть непустым")
         name = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S") + "_" + uuid4().hex[:8]
         launch(prompt.strip(), args.output_dir.expanduser() / name,
-               enable_insight=not args.skip_insight)
+               enable_insight=args.enable_insight)
     except Exception as exc:
         print(f"Ошибка: {exc}", file=sys.stderr)
         return 1

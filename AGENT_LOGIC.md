@@ -93,12 +93,13 @@ result = agent.invoke({
 ## Один запрос и сравнение с эталоном
 
 `launcher.py` принимает один текстовый запрос и запускает тот же агент с лимитом
-три итерации. Запрос можно передать аргументом или через UTF-8 текстовый файл
+три итерации. Этап Create Insight по умолчанию пропускается. Запрос можно передать
+аргументом или через UTF-8 текстовый файл
 (содержимое файла — сам запрос, без YAML-обёртки):
 
 ```powershell
 python launcher.py "Построй модель подвески Макферсона с шиной"
-python launcher.py --prompt-file suspension_request.txt --skip-insight
+python launcher.py --prompt-file suspension_request.txt
 ```
 
 Для запуска создаётся уникальная папка в `results/launcher/`; корень можно
