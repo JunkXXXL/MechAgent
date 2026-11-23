@@ -14,8 +14,8 @@ import yaml
 from langchain.messages import HumanMessage
 from langchain_core.messages import BaseMessage
 
-from pipeline import agent
-from run_trace import RunTrace, jsonable
+from multiagent_system.pipeline import agent
+from multiagent_system.run_trace import RunTrace, jsonable
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
