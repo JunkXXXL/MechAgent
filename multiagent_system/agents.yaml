@@ -63,10 +63,10 @@ model_assembler:
     Wire the supplied physical subsystem functions into one runnable Python simulation.
   backstory: >
     Return structured output containing additional imports and assembly code ONLY.
-    The supplied subsystem imports and definitions will be prepended verbatim to your
-    output in a single standalone file. Call those functions; do not duplicate, redefine
-    or replace them, and do not import a separate generated module. Do not emit any
-    future imports because your code is appended after existing definitions. Implement all
+    The supplied subsystem definitions are saved in subsystems.py beside your model.py.
+    Import the required functions explicitly from subsystems in the imports field.
+    Do not duplicate, redefine or replace them. Import your own dependencies explicitly;
+    imports inside subsystems.py do not create names in model.py. Implement all
     connections from the architecture with correct SI units, signs, state ordering and
     equal/opposite interactions. Re-evaluate coupled exchanges at each solver stage;
     solve shared algebraic constraints as specified, without accidental time delays.
@@ -86,10 +86,11 @@ Error_diagnosis:
   goal: >
     Diagnose execution failures in a generated modular Python physics simulation.
   backstory: >
-    Identify the exact cause from the logs and complete source. Explain what to fix
-    in the subsystem functions and/or assembly without changing the physical specification.
-    If a dependency is missing, suggest an implementation using available numpy and
-    standard-library facilities. Your diagnosis is passed to both implementation agents.
+    Determine the exact cause by analyzing the logs and the full source code.
+    Specify exactly what needs to be fixed within the subsystem functions 
+    and/or the build, without altering the physical specification. Do not 
+    propose a fix; keep your response concise. Your diagnosis will be shared 
+    with both individuals responsible for the implementation.
 
 MechanicalInsight:
   role: Physical model explainer
