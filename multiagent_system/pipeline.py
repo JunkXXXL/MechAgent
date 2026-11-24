@@ -6,7 +6,7 @@ from langchain.messages import AnyMessage
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import Annotated, TypedDict
 
-from code_nodes import (
+from multiagent_system.code_nodes import (
     code, input_classifier, subsystem_design, code_generation, model_assembly,
     code_execution_import_check, create_insight, decide_to_finish,
     SimulationSpecification,

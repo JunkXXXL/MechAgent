@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from uuid import uuid4
 import subprocess
+import shutil
 import sys
 import tempfile
 import yaml
@@ -88,10 +89,11 @@ def decide_to_finish(state: dict)-> Literal["regenerate", "make insight", "finis
 CODE_EXECUTION_TIMEOUT_SECONDS = 300
 
 
-def _run_python_code(source: str, label: str) -> subprocess.CompletedProcess[str]:
+def _run_python_code(source: str, label: str, subsystem_path: Path) -> subprocess.CompletedProcess[str]:
     """Run generated code in a separate interpreter and return its process result."""
     try:
         with tempfile.TemporaryDirectory(prefix="mechagent-check-") as directory:
+            shutil.copyfile(subsystem_path, Path(directory) / "subsystems.py")
             script_path = Path(directory) / "generated_simulation.py"
             script_path.write_text(source, encoding="utf-8")
 
@@ -139,9 +141,11 @@ def code_execution_import_check(state: dict):
     code_solution = state["generation"]
     imports = code_solution.imports
     source = f"{imports}\n{code_solution.code}"
+    subsystem_path = Path(state["artifact_dir"]) / "subsystems.py"
+    diagnosis_source = "# subsystems.py\n" + _source(state["subsystem_generation"]) + "\n# model.py\n" + source
 
     try:
-        import_result = _run_python_code(imports, "Import check")
+        import_result = _run_python_code(imports, "Import check", subsystem_path)
         writer({"stage": "import_check", "returncode": import_result.returncode,
                 "stdout": import_result.stdout, "stderr": import_result.stderr})
         if import_result.returncode != 0:
@@ -150,9 +154,9 @@ def code_execution_import_check(state: dict):
                 f"stdout:\n{import_result.stdout}\nstderr:\n{import_result.stderr}"
             )
             print("---CODE IMPORT CHECK: FAILED---")
-            return _build_failure_result(code_solution, source, error)
+            return _build_failure_result(code_solution, diagnosis_source, error)
 
-        execution_result = _run_python_code(source, "Execution check")
+        execution_result = _run_python_code(source, "Execution check", subsystem_path)
         writer({"stage": "execution_check", "returncode": execution_result.returncode,
                 "stdout": execution_result.stdout, "stderr": execution_result.stderr})
         if execution_result.returncode != 0:
@@ -161,11 +165,11 @@ def code_execution_import_check(state: dict):
                 f"stdout:\n{execution_result.stdout}\nstderr:\n{execution_result.stderr}"
             )
             print("---CODE EXECUTION CHECK: FAILED---")
-            return _build_failure_result(code_solution, source, error)
+            return _build_failure_result(code_solution, diagnosis_source, error)
     except (OSError, RuntimeError) as exc:
         writer({"stage": "code_check_error", "error": str(exc)})
         print("---CODE EXECUTION CHECK: FAILED---")
-        return _build_failure_result(code_solution, source, str(exc))
+        return _build_failure_result(code_solution, diagnosis_source, str(exc))
 
     print("---NO CODE TEST FAILURES---")
     return {
@@ -181,7 +185,8 @@ def _source(solution: code) -> str:
 def _feedback(state: dict) -> str:
     if state.get("error") != "yes":
         return ""
-    return ("Previous complete program:\n" + _source(state["generation"]) +
+    return ("Previous subsystems.py:\n" + _source(state["subsystem_generation"]) +
+            "\nPrevious model.py:\n" + _source(state["generation"]) +
             "\nValidation diagnosis:\n" + str(state["messages"][-1].content))
 
 
@@ -212,21 +217,16 @@ def code_generation(state: dict):
 
 
 def model_assembly(state: dict):
-    """Fourth agent: connect functions; retain their source verbatim in the result."""
+    """Fourth agent: connect functions imported from subsystems.py."""
     subsystems = state["subsystem_generation"]
     request = HumanMessage(prompts_tasks["model_assembly"]["description"].format(
         **_implementation_context(state), subsystems=_source(subsystems)
     ))
     conversation = [assembly_prompt, request]
     assembly = agent_model_assembler.invoke(conversation)
-    combined = code(
-        prefix=assembly.prefix,
-        imports=subsystems.imports + "\n" + assembly.imports,
-        code=subsystems.code + "\n\n" + assembly.code,
-    )
-    (Path(state["artifact_dir"]) / "model.py").write_text(_source(combined), encoding="utf-8")
+    (Path(state["artifact_dir"]) / "model.py").write_text(_source(assembly), encoding="utf-8")
     return {
-        "generation": combined,
+        "generation": assembly,
         "agent_assembly_history": conversation + [AIMessage(content=assembly.model_dump_json())],
     }
 
