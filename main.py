@@ -13,7 +13,7 @@ import yaml
 from langchain.messages import HumanMessage
 from langchain_core.messages import BaseMessage
 
-from pipeline import agent
+from multiagent_system.pipeline import agent
 
 
 PROJECT_DIR = Path(__file__).resolve().parent

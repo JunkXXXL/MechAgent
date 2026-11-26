@@ -4,7 +4,7 @@ from typing_extensions import TypedDict, Annotated, List
 from langchain.messages import SystemMessage, AnyMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 import operator
-from code_nodes import *
+from multiagent_system.code_nodes import *
 from dotenv import load_dotenv
 
 load_dotenv()

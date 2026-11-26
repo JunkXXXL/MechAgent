@@ -13,9 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-with open("agents.yaml", 'r', encoding="utf-8") as stream:
+with open("multiagent_system/agents.yaml", 'r', encoding="utf-8") as stream:
     prompts_agents = yaml.safe_load(stream)
-with open("tasks.yaml", 'r', encoding="utf-8") as stream:
+with open("multiagent_system/tasks.yaml", 'r', encoding="utf-8") as stream:
     prompts_tasks = yaml.safe_load(stream)
 class code(BaseModel):
     """Schema for code solutions to questions about LCEL."""
